@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, redirect, url_for, request, jsonify, session
+from flask import Flask, redirect, url_for, request, jsonify, session, render_template_string
 from flask_cors import CORS # <<< ADD THIS IMPORT
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.mongo_client import MongoClient
@@ -22,17 +22,24 @@ MONGO_URI = "mongodb+srv://mahez3717_db_user:snow_mahez@financialtracker.xreytyk
 client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 db = client.financialtracker # Access the 'financialtracker' database
 users_collection = db.users # 'users' collection for storing user data
-
+try:
+    with open('logined.html', 'r') as f: # REPLACE 'index.html' if your file is named differently
+        FRONTEND_HTML = f.read()
+except FileNotFoundError:
+    FRONTEND_HTML = "<h1>Error: Frontend HTML file not found!</h1>"
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
     print(f"MongoDB connection error: {e}")
+#app = Flask(__name__)
+#app.secret_key = os.urandom(24) 
+#CORS(app) # <<< ADD THIS LINE RIGHT AFTER INITIALIZING THE APP
+# --- Helper Functions ---
+# --- Flask App Initialization and Core Configuration ---
 app = Flask(__name__)
 app.secret_key = os.urandom(24) 
-CORS(app) # <<< ADD THIS LINE RIGHT AFTER INITIALIZING THE APP
-# --- Helper Functions ---
-
+CORS(app) # <<< PLACE IT HERE, right after app initialization
 def create_jwt(user_id):
     """Creates a JSON Web Token for user session management."""
     payload = {
@@ -61,7 +68,14 @@ def find_or_create_user(email, name=None, google_id=None, password_hash=None):
     result = users_collection.insert_one(new_user)
     new_user['_id'] = result.inserted_id
     return new_user
-
+# ----------------------------------------------------
+# 🚨 NEW ROUTE: Serve the Frontend Page
+# ----------------------------------------------------
+@app.route('/')
+def serve_frontend():
+    """Serves the main HTML page when the user visits the root URL."""
+    # Use render_template_string to send the pre-loaded HTML content
+    return render_template_string(FRONTEND_HTML)
 # --- Standard Login/Signup Endpoints ---
 
 @app.route('/api/signup', methods=['POST'])
@@ -180,5 +194,5 @@ def google_callback():
 if __name__ == '__main__':
     # Add CORS headers if running frontend and backend on different ports
     # app.run(debug=True, port=5000)
-    print("Flask app running on http://localhost:5000")
+    #print("Flask app running on http://localhost:5000")
     app.run(debug=True)

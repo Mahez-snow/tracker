@@ -1,0 +1,7 @@
+Flask
+gunicorn
+werkzeug
+PyJWT
+pymongo
+requests
+flask-cors
