@@ -9,19 +9,24 @@ import os
 import jwt # For creating session tokens (JWT is standard practice)
 import time
 from datetime import datetime, timedelta
-
+from bson.objectid import ObjectId # NEW IMPORT for working with MongoDB IDs
+from functools import wraps # NEW IMPORT for the decorator
 # --- Configuration (REPLACE WITH YOUR ACTUAL VALUES/ENVIRONMENT VARIABLES) ---
 # NOTE: In a real application, these should be loaded from environment variables (.env file)
 GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID" 
 GOOGLE_CLIENT_SECRET = "YOUR_GOOGLE_CLIENT_SECRET"
 REDIRECT_URI = "http://localhost:5000/api/auth/google/callback" 
-JWT_SECRET_KEY = "SUPER_SECRET_KEY_FOR_JWT" # Used to sign the session token
+JWT_SECRET_KEY = "hii@i_am_mahez!|my_lucky_number|3717" # Used to sign the session token
 MONGO_URI = "mongodb+srv://mahez3717_db_user:snow_mahez@financialtracker.xreytyk.mongodb.net/?appName=financialtracker"
 
 # --- MongoDB Setup ---
 client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
 db = client.financialtracker # Access the 'financialtracker' database
 users_collection = db.users # 'users' collection for storing user data
+
+expenses_collection = db.expenses_and_income # New
+trading_collection = db.trading_portfolio # New
+
 try:
     with open('logined.html', 'r') as f: # REPLACE 'index.html' if your file is named differently
         FRONTEND_HTML = f.read()
@@ -40,14 +45,83 @@ except Exception as e:
 app = Flask(__name__)
 app.secret_key = os.urandom(24) 
 CORS(app) # <<< PLACE IT HERE, right after app initialization
+# app.py
+
+# ... (after MongoDB Setup) ...
+
+def jwt_required(f):
+    """
+    Decorator to check for a valid JWT in the Authorization header.
+    It passes the user_id from the token payload to the decorated function.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # 1. Check for 'Authorization' header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': 'Authorization header missing'}), 401
+
+        try:
+            # Token expected format: "Bearer <token>"
+            token = auth_header.split(' ')[1]
+        except IndexError:
+            return jsonify({'error': 'Token format is "Bearer <token>"'}), 401
+
+        try:
+            # 2. Decode and Validate the token
+            # The 'audience' parameter is a security best practice, ensure the token 
+            # was meant for this service. We'll use your user collection name as a simple audience identifier.
+            payload = jwt.decode(token, 
+                                 os.environ.get("JWT_SECRET_KEY"), # Get the secret key from environment
+                                 algorithms=["HS256"], 
+                                 audience="financialtracker") 
+            
+            # The user_id is passed to the decorated function
+            user_id = payload.get('user_id')
+            
+            # Optionally check if user still exists in DB
+            if not users_collection.find_one({"_id": ObjectId(user_id)}):
+                return jsonify({'error': 'User not found'}), 401
+                
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidAudienceError:
+            return jsonify({'error': 'Invalid token audience'}), 401
+        except jwt.InvalidSignatureError:
+            return jsonify({'error': 'Invalid token signature'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+        except Exception as e:
+            # Catch all other exceptions (e.g., malformed token)
+            return jsonify({'error': f'Authentication failed: {e}'}), 401
+
+        # 3. Success: Execute the original route function
+        # The user_id is passed as a keyword argument
+        return f(*args, **kwargs, user_id=user_id) 
+
+    return decorated
+# app.py
+
 def create_jwt(user_id):
     """Creates a JSON Web Token for user session management."""
+    # Define token expiration time
+    expiration_time = datetime.utcnow() + timedelta(hours=24)
+    
     payload = {
         'user_id': str(user_id),
-        'exp': datetime.utcnow() + timedelta(hours=24), # Token expires in 24 hours
-        'iat': datetime.utcnow()
+        'exp': expiration_time,
+        'iat': datetime.utcnow(),
+        'aud': "financialtracker"  # 🚨 IMPORTANT: Add the Audience claim for security
     }
-    return jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
+    
+    # 🚨 IMPORTANT: Use os.environ.get() for secure key retrieval
+    secret = os.environ.get("JWT_SECRET_KEY") 
+    
+    # Fallback for local testing if ENV is not set (you should use os.environ.get in prod)
+    if not secret:
+        secret = "hii@i_am_mahez!|my_lucky_number|3717"
+        
+    return jwt.encode(payload, secret, algorithm='HS256')
 
 def find_or_create_user(email, name=None, google_id=None, password_hash=None):
     """Finds a user by email or creates a new one."""
@@ -78,6 +152,12 @@ def serve_frontend():
     return render_template_string(FRONTEND_HTML)
 # --- Standard Login/Signup Endpoints ---
 
+# app.py
+
+# ... (Helper Functions are above) ...
+
+# --- Standard Login/Signup Endpoints ---
+
 @app.route('/api/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -93,12 +173,16 @@ def signup():
 
     hashed_password = generate_password_hash(password)
     user = find_or_create_user(email=email, name=name, password_hash=hashed_password)
+    
+    # 🚨 FIX 1: Use create_jwt (which we will update next)
     token = create_jwt(user['_id'])
     
     # ✅ CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
     response = jsonify({"message": "User created successfully", "token": token})
     response.headers['Content-Type'] = 'application/json' 
     return response, 201
+# app.py
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -108,6 +192,8 @@ def login():
     user = users_collection.find_one({'email': email})
 
     if user and user.get('password') and check_password_hash(user['password'], password):
+        
+        # 🚨 FIX 2: Use create_jwt (which we will update next)
         token = create_jwt(user['_id'])
         
         # ✅ CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
@@ -115,8 +201,7 @@ def login():
         response.headers['Content-Type'] = 'application/json'
         return response, 200
     else:
-        return jsonify({"error": "Invalid email or password"}), 401
-# --- Google OAuth Endpoints ---
+        return jsonify({"error": "Invalid email or password"}), 401# --- Google OAuth Endpoints ---
 
 @app.route('/api/auth/google')
 def google_login():
@@ -188,7 +273,136 @@ def google_callback():
         "token": token,
         "user": {"email": email, "name": name}
     }), 200
+#creating protected route example
+# app.py
 
+# ... (After your existing /api/login and /api/signup routes) ...
+
+# ----------------------------------------------------
+# 🚨 ROUTE 3: Protected User Profile Endpoint
+# ----------------------------------------------------
+@app.route('/api/user/profile', methods=['GET'])
+@jwt_required
+def get_user_profile(user_id):
+    """Fetches user data for the dashboard after token verification."""
+    try:
+        # We use the user_id passed from the decorator
+        user_data = users_collection.find_one({"_id": ObjectId(user_id)}, {"password": 0}) 
+
+        if not user_data:
+            return jsonify({"error": "User not found"}), 404
+
+        # Convert ObjectId to string for JSON serialization
+        user_data['user_id'] = str(user_data['_id'])
+        del user_data['_id']
+
+        return jsonify(user_data), 200
+
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+# ----------------------------------------------------
+# 🚨 ROUTE 4: Protected Daily Transaction Entry
+# ----------------------------------------------------
+@app.route('/api/finance/entry', methods=['POST'])
+@jwt_required
+def add_daily_entry(user_id):
+    """Saves a new income or expense transaction to the database."""
+    data = request.get_json()
+    
+    # 1. Validate incoming data
+    required_fields = ['type', 'amount', 'description']
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields (type, amount, description)"}), 400
+
+    try:
+        # 2. Prepare transaction document
+        transaction_doc = {
+            "user_id": ObjectId(user_id), # Link the transaction to the user's ID
+            "type": data['type'], # 'income' or 'expense'
+            "amount": float(data['amount']),
+            "description": data['description'],
+            "timestamp": datetime.utcnow(), # Auto-apply the time of filling
+            "category": data.get('category', 'Uncategorized'), # Use provided category or default
+        }
+
+        # 3. Insert into the expenses collection
+        expenses_collection.insert_one(transaction_doc)
+        
+        return jsonify({"message": "Transaction logged successfully"}), 201
+
+    except ValueError:
+        return jsonify({"error": "Amount must be a valid number"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Failed to log transaction: {str(e)}"}), 500
+# app.py
+
+# ... (After your existing @app.route('/api/user/profile') route) ...
+
+# ----------------------------------------------------
+# 🚨 ROUTE 4: Protected Monthly Finance Summary
+# ----------------------------------------------------
+@app.route('/api/finance/summary', methods=['GET'])
+@jwt_required
+def get_finance_summary(user_id):
+    """Calculates and returns total income and expenses for the current month."""
+    try:
+        current_year = datetime.utcnow().year
+        current_month = datetime.utcnow().month
+        
+        # 1. Define the start and end dates for the current month in UTC
+        start_of_month = datetime(current_year, current_month, 1)
+        
+        # Calculate the start of the next month to define the end of the current month
+        if current_month == 12:
+            start_of_next_month = datetime(current_year + 1, 1, 1)
+        else:
+            start_of_next_month = datetime(current_year, current_month + 1, 1)
+
+        # 2. MongoDB Aggregation Pipeline
+        pipeline = [
+            # Filter by the authenticated user and the current month
+            {
+                '$match': {
+                    'user_id': ObjectId(user_id),
+                    'timestamp': {
+                        '$gte': start_of_month,
+                        '$lt': start_of_next_month
+                    }
+                }
+            },
+            # Group by transaction type ('income' or 'expense') and calculate the total amount
+            {
+                '$group': {
+                    '_id': '$type', 
+                    'total_amount': {'$sum': '$amount'}
+                }
+            }
+        ]
+        
+        # 3. Execute the pipeline
+        results = expenses_collection.aggregate(pipeline)
+        
+        # 4. Process results into a dictionary
+        summary = {
+            'total_income': 0.0,
+            'total_expense': 0.0,
+            'net_flow': 0.0
+        }
+        
+        for result in results:
+            if result['_id'] == 'income':
+                summary['total_income'] = result['total_amount']
+            elif result['_id'] == 'expense':
+                summary['total_expense'] = result['total_amount']
+                
+        # 5. Calculate Net Flow
+        summary['net_flow'] = summary['total_income'] - summary['total_expense']
+        
+        return jsonify(summary), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to retrieve finance summary: {str(e)}"}), 500
 # --- Run the App ---
 
 if __name__ == '__main__':
