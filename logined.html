@@ -253,7 +253,8 @@
                     localStorage.setItem('userToken', result.token);
 
                     // 2. Redirect to a dashboard page
-                    window.location.href = 'dashboard.html';
+                    //window.location.href = 'dashboard.html';
+                    window.location.href = '/dashboard'; // Updated to match new Flask route
 
                 })
                 .catch(error => {

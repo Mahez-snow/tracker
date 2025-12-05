@@ -33,6 +33,11 @@ try:
 except FileNotFoundError:
     FRONTEND_HTML = "<h1>Error: Frontend HTML file not found!</h1>"
 try:
+    with open('dashboard.html', 'r') as f:
+        DASHBOARD_HTML = f.read()
+except FileNotFoundError:
+    DASHBOARD_HTML = "<h1>Error: Dashboard HTML file not found!</h1>"
+try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
@@ -151,13 +156,18 @@ def serve_frontend():
     # Use render_template_string to send the pre-loaded HTML content
     return render_template_string(FRONTEND_HTML)
 # --- Standard Login/Signup Endpoints ---
+# --- New: Load Dashboard HTML content (Add this near where you load logined.html) ---
 
 # app.py
 
 # ... (Helper Functions are above) ...
 
 # --- Standard Login/Signup Endpoints ---
-
+# --- NEW SECURE DASHBOARD ROUTE ---
+@app.route('/dashboard') # No .html extension needed here
+def serve_dashboard():
+    # This route serves the secure dashboard content.
+    return render_template_string(DASHBOARD_HTML)
 @app.route('/api/signup', methods=['POST'])
 def signup():
     data = request.get_json()
