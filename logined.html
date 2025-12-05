@@ -187,9 +187,6 @@
     </div>
 
     <script>
-    // --- WRAP EVERYTHING IN DOMContentLoaded ---
-    document.addEventListener('DOMContentLoaded', function() {
-        
         let isLogin = true;
         const formTitle = document.getElementById('form-title');
         const nameField = document.getElementById('name-field');
@@ -199,9 +196,8 @@
         const authForm = document.getElementById('auth-form');
 
         // **IMPORTANT: Define your base URL**
-        // Ensure this is your current Render URL:
+        //const API_BASE_URL = 'http://localhost:5000';
         const API_BASE_URL = 'https://financetracker-0sg7.onrender.com';
-
         function toggleForm() {
             isLogin = !isLogin;
             if (isLogin) {
@@ -219,15 +215,19 @@
             }
         }
 
-        // --- Standard Email/Password Submission (Final Logic) ---
+        // --- Standard Email/Password Submission (Updated) ---
+        // --- Standard Email/Password Submission (FINAL ROBUST FIX) ---
         authForm.addEventListener('submit', function (e) {
             e.preventDefault();
             const formData = new FormData(authForm);
             const data = Object.fromEntries(formData.entries());
 
-            // Use the global isLogin state, which is now reliable due to DOMContentLoaded
+            // --- CRITICAL STEP: Use the global isLogin state ---
+            // If the bug persists, it means the global 'isLogin' variable is actually 
+            // the cleanest way to track state because it's only modified by the toggleForm() function.
             const endpoint = isLogin ? `${API_BASE_URL}/api/login` : `${API_BASE_URL}/api/signup`;
 
+            // Add a simple loading state
             submitButton.textContent = 'Processing...';
             submitButton.disabled = true;
 
@@ -249,35 +249,41 @@
                 .then(result => {
                     console.log("Authentication Successful! Token:", result.token);
 
+                    // 1. Store the token for future authenticated requests
                     localStorage.setItem('userToken', result.token);
+
+                    // 2. Redirect to a dashboard page
                     window.location.href = 'dashboard.html';
 
                 })
                 .catch(error => {
+                    // Error handling for network issues or server-returned errors
                     console.error('Authentication Error:', error.message);
                     alert(`Authentication Failed: ${error.message}`);
                 })
                 .finally(() => {
+                    // Reset button text and state using the global 'isLogin' variable
                     const loginText = 'Sign In to Trading';
                     const signupText = 'Create Trading Account';
+
                     submitButton.textContent = isLogin ? loginText : signupText;
                     submitButton.disabled = false;
                 });
         });
         // --- End Standard Email/Password Submission ---
 
+        // --- End Standard Email/Password Submission ---
+          
 
-        // --- Google OAuth Initiation ---
+        // --- Google OAuth Initiation (Updated) ---
         function handleGoogleLogin() {
             console.log('Initiating Google OAuth flow...');
+            // Redirect the user to the Flask backend's Google initiation endpoint
+            // NOTE: This will only work once you've set the GOOGLE_CLIENT_ID/SECRET in app.py
             window.location.href = `${API_BASE_URL}/api/auth/google`;
         }
 
-        // --- Attach Google Login globally (needed because the button is onclick="handleGoogleLogin()") ---
-        window.handleGoogleLogin = handleGoogleLogin; 
-    }); 
-    // --- END WRAPPER ---
-</script>
+    </script>
 </body>
 
 </html>
