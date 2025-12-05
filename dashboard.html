@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard | Financial Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #0f172a;
+            /* Slate-900 */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="flex h-screen bg-gray-900">
+
+        <aside class="w-64 bg-gray-800 text-gray-300 flex flex-col fixed h-full shadow-lg z-20">
+            <div class="p-6 text-2xl font-bold text-green-500 border-b border-gray-700">
+                Finance Track
+            </div>
+            <nav class="flex-grow p-4 space-y-2">
+                <a href="#home"
+                    class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-150 text-white font-semibold bg-gray-700">
+                    <i class="fa-solid fa-house-chimney w-5 h-5 mr-3"></i> Home Overview
+                </a>
+                <a href="#graphs" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-150">
+                    <i class="fa-solid fa-chart-line w-5 h-5 mr-3"></i> Graph Analysis
+                </a>
+                <a href="#trading" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-150">
+                    <i class="fa-solid fa-chart-area w-5 h-5 mr-3"></i> Trading Portfolio
+                </a>
+                <a href="#categories"
+                    class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-150">
+                    <i class="fa-solid fa-tags w-5 h-5 mr-3"></i> Expense Categories
+                </a>
+                <a href="#reports" class="flex items-center p-3 rounded-lg hover:bg-gray-700 transition duration-150">
+                    <i class="fa-solid fa-file-invoice-dollar w-5 h-5 mr-3"></i> Financial Reports
+                </a>
+            </nav>
+            <div class="p-4 border-t border-gray-700">
+                <button id="logout-button-sidebar"
+                    class="w-full text-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition duration-300">
+                    <i class="fa-solid fa-right-from-bracket mr-2"></i> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <div class="flex flex-col flex-1 ml-64">
+
+            <header class="h-16 bg-gray-800 flex items-center justify-between px-6 shadow-md sticky top-0 z-10">
+                <h2 class="text-xl font-semibold text-gray-300">Home Overview</h2>
+
+                <div class="relative group">
+                    <button id="profile-toggle"
+                        class="flex items-center p-2 rounded-full hover:bg-gray-700 transition duration-150">
+                        <span id="user-initials"
+                            class="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white font-bold mr-2">MA</span>
+                        <span id="user-name-header" class="text-white text-sm font-medium">Mahesh</span>
+                        <i class="fa-solid fa-chevron-down w-3 h-3 ml-2 text-gray-400"></i>
+                    </button>
+
+                    <div id="profile-dropdown"
+                        class="absolute right-0 mt-2 w-48 bg-gray-700 rounded-lg shadow-xl py-2 hidden group-hover:block transition duration-200 z-30">
+                        <a href="#profile-edit"
+                            class="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
+                            <i class="fa-solid fa-user-edit mr-3"></i> Edit Profile
+                        </a>
+                        <a href="#settings" class="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
+                            <i class="fa-solid fa-cog mr-3"></i> Settings
+                        </a>
+                        <div class="border-t border-gray-600 my-1"></div>
+                        <button id="logout-button-dropdown"
+                            class="flex items-center px-4 py-2 text-sm text-red-400 hover:bg-gray-600 w-full text-left">
+                            <i class="fa-solid fa-sign-out-alt mr-3"></i> Log Out
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-8 space-y-10">
+
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-400">Total Income (This Month)</h3>
+                        <p id="total-income" class="text-3xl font-bold text-green-500 mt-1">₹ 0.00</p>
+                    </div>
+                    <div class="p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-400">Total Expenses (This Month)</h3>
+                        <p id="total-expense" class="text-3xl font-bold text-red-500 mt-1">₹ 0.00</p>
+                    </div>
+                    <div class="p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-400">Net Flow (Remaining)</h3>
+                        <p id="net-flow" class="text-3xl font-bold text-yellow-500 mt-1">₹ 0.00</p>
+                    </div>
+                </section>
+
+                <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    <div
+                        class="lg:col-span-2 p-6 bg-gray-800 rounded-xl shadow-lg h-96 flex items-center justify-center relative overflow-hidden">
+                        <h3 class="text-xl font-bold text-white mb-4 z-10">Month-to-Date Financial Overview</h3>
+                        <i class="fa-solid fa-chart-area fa-10x absolute text-green-600 opacity-10"></i>
+                        <i
+                            class="fa-solid fa-arrow-trend-up fa-8x absolute right-10 top-20 text-green-500 opacity-20"></i>
+                        <i
+                            class="fa-solid fa-arrow-trend-down fa-8x absolute left-10 bottom-20 text-red-500 opacity-20"></i>
+                    </div>
+
+                    <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Today's Transaction
+                            Entry</h3>
+                        <form id="daily-entry-form" class="space-y-4">
+                            <div>
+                                <label for="type" class="block text-sm font-medium text-gray-400">Type</label>
+                                <select id="type" name="type" required
+                                    class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white">
+                                    <option value="income">Income</option>
+                                    <option value="expense">Expense</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="amount" class="block text-sm font-medium text-gray-400">Amount (₹)</label>
+                                <input type="number" id="amount" name="amount" required
+                                    class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white">
+                            </div>
+                            <div>
+                                <label for="description"
+                                    class="block text-sm font-medium text-gray-400">Description/Source</label>
+                                <input type="text" id="description" name="description" required
+                                    class="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white">
+                                <small class="text-gray-500">e.g., Salary, Rent payment, Freelance work</small>
+                            </div>
+                            <button type="submit"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition duration-300">
+                                Log Transaction
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://financetracker-0sg7.onrender.com'; // **CRITICAL: ENSURE THIS IS YOUR LIVE RENDER URL**
+        const LOGIN_PAGE = 'logined.html';
+
+        let userToken = localStorage.getItem('userToken');
+        let userId = null; // We'll store the user ID here
+
+        function handleLogout() {
+            localStorage.removeItem('userToken');
+            alert('You have been logged out.');
+            window.location.href = LOGIN_PAGE;
+        }
+
+        // --- 1. Fetch User Profile Data (Protected Endpoint) ---
+        async function fetchUserProfile() {
+            if (!userToken) {
+                alert('Session Expired or Invalid. Please log in first.');
+                window.location.href = LOGIN_PAGE;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`, // Sending the JWT
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    // This catches 401 Unauthorized errors from jwt_required
+                    const errorData = await response.json();
+                    alert(`Access Error: ${errorData.error}. Please log in again.`);
+                    handleLogout(); // Log out if token is invalid or expired
+                    return;
+                }
+
+                const userData = await response.json();
+
+                // Store user ID and display name/initials
+                userId = userData.user_id;
+                const userName = userData.name || userData.email.split('@')[0];
+                const initials = userName.substring(0, 2).toUpperCase();
+
+                document.getElementById('user-initials').textContent = initials;
+                document.getElementById('user-name-header').textContent = userName;
+                document.getElementById('total-income').textContent = 'Loading...'; // Ready for summary data
+                document.getElementById('total-expense').textContent = 'Loading...';
+                document.getElementById('net-flow').textContent = 'Loading...';
+
+                // **Next Step:** Fetch initial summary data
+                fetchFinanceSummary(userToken);
+
+            } catch (error) {
+                console.error('Network or Server Error during profile fetch:', error);
+                alert('Could not connect to the API server.');
+                handleLogout();
+            }
+        }
+
+        // --- 2. Fetch Initial Summary Data (Protected Endpoint - Placeholder) ---
+        // This endpoint (/api/finance/summary) needs to be built next in app.py
+
+        // Placeholder for future API call
+        async function fetchFinanceSummary(token) {
+            // ACTUAL API CALL:
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/finance/summary`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+
+                if (response.ok) {
+                    const summary = await response.json();
+                    // Update UI elements with fetched data
+                    document.getElementById('total-income').textContent = `₹ ${summary.total_income.toFixed(2)}`;
+                    document.getElementById('total-expense').textContent = `₹ ${summary.total_expense.toFixed(2)}`;
+                    document.getElementById('net-flow').textContent = `₹ ${summary.net_flow.toFixed(2)}`;
+                } else {
+                    console.error('Failed to load summary:', response.status);
+                }
+            } catch (error) {
+                console.error('Network error during summary fetch:', error);
+            }
+        }
+
+        // --- 3. Submit Daily Entry (Protected Endpoint) ---
+        document.getElementById('daily-entry-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+
+            // Basic data collection
+            const entryData = {
+                type: form.type.value,
+                amount: form.amount.value,
+                description: form.description.value,
+                // category will be added later when we build categories UI
+            };
+
+            submitBtn.textContent = 'Logging...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/finance/entry`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`, // Send JWT
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(entryData)
+                });
+
+                if (response.ok) {
+                    alert('Transaction logged successfully!');
+                    form.reset(); // Clear form on success
+                    // Optionally call fetchFinanceSummary() to update totals
+                } else {
+                    const errorData = await response.json();
+                    alert(`Transaction Failed: ${errorData.error || response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Network Error:', error);
+                alert('Failed to connect to the server for logging transaction.');
+            } finally {
+                submitBtn.textContent = 'Log Transaction';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // --- Initialization ---
+        document.getElementById('logout-button-sidebar').addEventListener('click', handleLogout);
+        document.getElementById('logout-button-dropdown').addEventListener('click', handleLogout);
+
+        document.addEventListener('DOMContentLoaded', fetchUserProfile);
+
+    </script>
+</body>
+
+</html>
