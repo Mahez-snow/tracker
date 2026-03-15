@@ -1,28 +1,27 @@
 # app.py
 from flask import Flask, redirect, url_for, request, jsonify, session, render_template_string
-from flask_cors import CORS # <<< ADD THIS IMPORT
+from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import requests
 import os
-import jwt # For creating session tokens (JWT is standard practice)
+import jwt # For creating session tokens (JWT)
 import time
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId # NEW IMPORT for working with MongoDB IDs
-from functools import wraps # NEW IMPORT for the decorator
-# --- Configuration (REPLACE WITH YOUR ACTUAL VALUES/ENVIRONMENT VARIABLES) ---
-# NOTE: In a real application, these should be loaded from environment variables (.env file)
-GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID" 
+from functools import wraps 
+
+GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID" #later to add 
 GOOGLE_CLIENT_SECRET = "YOUR_GOOGLE_CLIENT_SECRET"
 REDIRECT_URI = "http://localhost:5000/api/auth/google/callback" 
-JWT_SECRET_KEY = "hii@i_am_mahez!|my_lucky_number|3717" # Used to sign the session token
+JWT_SECRET_KEY = "hii@i_am_mahez!|my_lucky_number|3717" 
 MONGO_URI = "mongodb+srv://mahez3717_db_user:snow_mahez@financialtracker.xreytyk.mongodb.net/?appName=financialtracker"
 
-# --- MongoDB Setup ---
+#  MongoDB Setup 
 client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
-db = client.financialtracker # Access the 'financialtracker' database
-users_collection = db.users # 'users' collection for storing user data
+db = client.financialtracker 
+users_collection = db.users 
 
 expenses_collection = db.expenses_and_income # New
 trading_collection = db.trading_portfolio # New
@@ -42,17 +41,10 @@ try:
     print("Pinged your deployment. You successfully connected to MongoDB!")
 except Exception as e:
     print(f"MongoDB connection error: {e}")
-#app = Flask(__name__)
-#app.secret_key = os.urandom(24) 
-#CORS(app) # <<< ADD THIS LINE RIGHT AFTER INITIALIZING THE APP
-# --- Helper Functions ---
-# --- Flask App Initialization and Core Configuration ---
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24) 
-CORS(app) # <<< PLACE IT HERE, right after app initialization
-# app.py
-
-# ... (after MongoDB Setup) ...
+CORS(app) 
 
 def jwt_required(f):
     """
@@ -73,9 +65,7 @@ def jwt_required(f):
             return jsonify({'error': 'Token format is "Bearer <token>"'}), 401
 
         try:
-            # 2. Decode and Validate the token
-            # The 'audience' parameter is a security best practice, ensure the token 
-            # was meant for this service. We'll use your user collection name as a simple audience identifier.
+          
             payload = jwt.decode(token, 
                                  os.environ.get("JWT_SECRET_KEY"), # Get the secret key from environment
                                  algorithms=["HS256"], 
@@ -97,7 +87,7 @@ def jwt_required(f):
         except jwt.InvalidTokenError:
             return jsonify({'error': 'Invalid token'}), 401
         except Exception as e:
-            # Catch all other exceptions (e.g., malformed token)
+            # Catch all other exceptions
             return jsonify({'error': f'Authentication failed: {e}'}), 401
 
         # 3. Success: Execute the original route function
@@ -147,23 +137,14 @@ def find_or_create_user(email, name=None, google_id=None, password_hash=None):
     result = users_collection.insert_one(new_user)
     new_user['_id'] = result.inserted_id
     return new_user
-# ----------------------------------------------------
-# 🚨 NEW ROUTE: Serve the Frontend Page
-# ----------------------------------------------------
+#  NEW ROUTE: Serve the Frontend Page
 @app.route('/')
 def serve_frontend():
     """Serves the main HTML page when the user visits the root URL."""
-    # Use render_template_string to send the pre-loaded HTML content
+   
     return render_template_string(FRONTEND_HTML)
 # --- Standard Login/Signup Endpoints ---
-# --- New: Load Dashboard HTML content (Add this near where you load logined.html) ---
 
-# app.py
-
-# ... (Helper Functions are above) ...
-
-# --- Standard Login/Signup Endpoints ---
-# --- NEW SECURE DASHBOARD ROUTE ---
 @app.route('/dashboard') # No .html extension needed here
 def serve_dashboard():
     # This route serves the secure dashboard content.
@@ -184,10 +165,10 @@ def signup():
     hashed_password = generate_password_hash(password)
     user = find_or_create_user(email=email, name=name, password_hash=hashed_password)
     
-    # 🚨 FIX 1: Use create_jwt (which we will update next)
+    # FIX 1: Use create_jwt 
     token = create_jwt(user['_id'])
     
-    # ✅ CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
+    #  CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
     response = jsonify({"message": "User created successfully", "token": token})
     response.headers['Content-Type'] = 'application/json' 
     return response, 201
@@ -203,10 +184,10 @@ def login():
 
     if user and user.get('password') and check_password_hash(user['password'], password):
         
-        # 🚨 FIX 2: Use create_jwt (which we will update next)
+        #  FIX 2: Use create_jwt (which we will update next)
         token = create_jwt(user['_id'])
         
-        # ✅ CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
+        #  CORRECT FLOW: 1. Create response. 2. Set headers. 3. Return.
         response = jsonify({"message": "Login successful", "token": token})
         response.headers['Content-Type'] = 'application/json'
         return response, 200
@@ -283,14 +264,8 @@ def google_callback():
         "token": token,
         "user": {"email": email, "name": name}
     }), 200
-#creating protected route example
-# app.py
 
-# ... (After your existing /api/login and /api/signup routes) ...
 
-# ----------------------------------------------------
-# 🚨 ROUTE 3: Protected User Profile Endpoint
-# ----------------------------------------------------
 @app.route('/api/user/profile', methods=['GET'])
 @jwt_required
 def get_user_profile(user_id):
@@ -311,9 +286,7 @@ def get_user_profile(user_id):
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
-# ----------------------------------------------------
-# 🚨 ROUTE 4: Protected Daily Transaction Entry
-# ----------------------------------------------------
+# ROUTE 4: Protected Daily Transaction Entry
 @app.route('/api/finance/entry', methods=['POST'])
 @jwt_required
 def add_daily_entry(user_id):
@@ -345,13 +318,8 @@ def add_daily_entry(user_id):
         return jsonify({"error": "Amount must be a valid number"}), 400
     except Exception as e:
         return jsonify({"error": f"Failed to log transaction: {str(e)}"}), 500
-# app.py
 
-# ... (After your existing @app.route('/api/user/profile') route) ...
-
-# ----------------------------------------------------
-# 🚨 ROUTE 4: Protected Monthly Finance Summary
-# ----------------------------------------------------
+#  ROUTE 4: Protected Monthly Finance Summary
 @app.route('/api/finance/summary', methods=['GET'])
 @jwt_required
 def get_finance_summary(user_id):
@@ -360,7 +328,7 @@ def get_finance_summary(user_id):
         current_year = datetime.utcnow().year
         current_month = datetime.utcnow().month
         
-        # 1. Define the start and end dates for the current month in UTC
+        # 1. the start and end dates for the current month in UTC
         start_of_month = datetime(current_year, current_month, 1)
         
         # Calculate the start of the next month to define the end of the current month
@@ -413,7 +381,6 @@ def get_finance_summary(user_id):
 
     except Exception as e:
         return jsonify({"error": f"Failed to retrieve finance summary: {str(e)}"}), 500
-# --- Run the App ---
 
 if __name__ == '__main__':
     # Add CORS headers if running frontend and backend on different ports
